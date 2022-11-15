@@ -1,5 +1,7 @@
 import { Component, OnInit } from '@angular/core';
+import { Title } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
+import { switchMap, tap } from 'rxjs';
 import { CustomerService, IUser } from '../customer.service';
 
 @Component({
@@ -9,17 +11,35 @@ import { CustomerService, IUser } from '../customer.service';
 })
 export class CustomerProfileComponent implements OnInit {
 
+  id: number = 0;
   customer!: IUser;
+  isLoading: boolean = false;
 
-  constructor(private activatedRoute: ActivatedRoute, private customerService: CustomerService) { }
+  constructor(private activatedRoute: ActivatedRoute, private customerService: CustomerService, private titleSevice: Title) { }
 
   ngOnInit(): void {
-    const id = this.activatedRoute.snapshot.params['id'];
-    this.customerService.getUserById$(id).subscribe(user => {
-      this.customer = user;
-    });
-    
-    
+    this.activatedRoute.params
+      .pipe(
+        tap(params => {
+          this.id = +params['id'];
+          this.titleSevice.setTitle('Profile' + this.id);
+      
+          this.isLoading = true;
+        }),
+        switchMap(params => {
+          return this.customerService.getUserById$(params['id'])
+        })
+      )
+      .subscribe({
+            next: user => {
+            this.customer = user; 
+            this.isLoading = false;
+          },
+            error: error => {
+              this.isLoading = false;
+              console.error('error happened' + error);
+            } 
+        });
+      }
+ 
   }
-
-}
